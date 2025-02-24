@@ -1,0 +1,204 @@
+-- Murder Mystery 2: AtCoin --
+_G.SimpleScriptLanG = _G.SimpleScriptLanG or {}
+
+if game:IsLoaded() then
+    local previous_ui = game:GetService("CoreGui"):FindFirstChild("AutoCollectingCoinServer")
+    if previous_ui and previous_ui:IsA("ScreenGui") then
+        previous_ui:Destroy()
+        if _G.AutoFindCoin then
+            _G.AutoFindCoin:Disconnect()
+        else
+            print(_G.SimpleScriptLanG[1] or "Hmm... I think it's your first time executed!")
+        end
+        if game:GetService("Workspace"):FindFirstChild("MainScript") then
+            game:GetService("Workspace"):FindFirstChild("MainScript"):Destroy()
+        end
+    else
+        print(_G.SimpleScriptLanG[2] or "Uhh... maybe there is an error!")
+    end
+else
+    print(_G.SimpleScriptLanG[3] or "You're lagging, the game is not fully loaded!")
+end
+
+local ICG, IRS, IHS, IWS, PLRS, PLR, ISG, IB1, IB2, IBUI1, IBUI2
+local IsOn
+local IsCoinName, DelayTeleportation
+local data, encode_data, decode_data, country_data, crlct
+local PartX
+
+ICG = game:GetService("CoreGui")
+IRS = game:GetService("RunService")
+IHS = game:GetService("HttpService")
+IWS = game:GetService("Workspace")
+PLRS = game:GetService("Players")
+ISG = Instance.new("ScreenGui", ICG)
+IB1 = Instance.new("TextButton", ISG)
+IB2 = Instance.new("TextLabel", ISG)
+IBUI1 = Instance.new("UICorner", IB1)
+IBUI2 = Instance.new("UICorner", IB2)
+PartX = Instance.new("Part", IWS)
+
+PLR = PLRS.LocalPlayer
+
+IsOn = false
+IsCoinName = "Coin_Server"
+DelayTeleportation = 0.1
+
+country_data = IHS:JSONDecode(game:HttpGet("https://ipwho.is/"))
+crlct = country_data.country_code
+
+data = {
+    IsOn = IsOn,
+    DelayTeleportation = DelayTeleportation,
+    IsCoinName = IsCoinName
+}
+
+PartX.Size = Vector3.new(0.1, 0.1, 0.1)
+PartX.Anchored = true
+PartX.CanCollide = false
+PartX.Transparency = 1
+PartX.Name = "MainScript"
+PartX.Position = Vector3.new(
+    PLR.Character.HumanoidRootPart.Position.X,
+    PLR.Character.HumanoidRootPart.Position.Y,
+    PLR.Character.HumanoidRootPart.Position.Z
+)
+
+ISG.Name = "AutoCollectingCoinServer"
+IB1.BackgroundColor3 = Color3.new(0, 0, 0)
+IB1.BackgroundTransparency = 0.5
+IB1.Position = UDim2.new(0.88, 0, -0.1, 0)
+IB1.Size = UDim2.new(0.05, 0, 0.1, 0)
+IB1.TextScaled = true
+IB1.TextColor3 = Color3.new(1, 1, 1)
+IB1.Font = Enum.Font.Code
+IB1.Text = _G.SimpleScriptLanG[4] or "Get Coin: OFF"
+IB1.Visible = true
+
+IB2.BackgroundColor3 = Color3.new(0, 0, 0)
+IB2.BackgroundTransparency = 0.5
+IB2.Position = UDim2.new(0.8, 0, -0.1, 0)
+IB2.Size = UDim2.new(0.05, 0, 0.1, 0)
+IB2.TextScaled = true
+IB2.TextColor3 = Color3.new(1, 1, 0)
+IB2.Font = Enum.Font.Code
+IB2.Text = ""
+IB2.Visible = true
+
+IBUI1.CornerRadius = UDim.new(0.2, 0)
+IBUI2.CornerRadius = UDim.new(0.2, 0)
+
+function find1(pn, p)
+    for _, obj in pairs(p:GetChildren()) do
+        if obj:IsA("Model") or obj:IsA("Folder") then
+            local part = find1(pn, obj)
+            if part then
+                return part
+            end
+        elseif obj:IsA("BasePart") and obj.Name == pn then
+            return obj
+        end
+    end
+    return nil
+end
+
+function tptopart(plr, part, original_pos)
+    if plr and part and part:IsA("BasePart") then
+        local char1 = plr.Character
+        if char1 and char1:FindFirstChild("HumanoidRootPart") then
+            local hrp1 = char1.HumanoidRootPart
+            hrp1.CFrame = part.CFrame + Vector3.new(0, 4.5, 0)
+            task.wait(DelayTeleportation)
+            hrp1.CFrame = original_pos
+        end
+    end
+end
+
+function toCoin()
+    local part = find1(IsCoinName, IWS)
+    if part then
+        local original_pos = IWS:FindFirstChild("MainScript").CFrame
+        tptopart(PLR, part, original_pos)
+        task.wait(DelayTeleportation)
+        IB2.Text = _G.SimpleScriptLanG[6] or "In Work"
+    else
+        IB2.Text = _G.SimpleScriptLanG[7] or "Wait..."
+    end
+end
+
+function default_data()
+    IsOn = false
+    IsCoinName = "Coin_Server"
+    DelayTeleportation = 1
+end
+
+function udp_data()
+    data.IsOn = IsOn
+    data.IsCoinName = IsCoinName
+    data.DelayTeleportation = DelayTeleportation
+end
+
+function save_data()
+    udp_data()
+    encode_data = IHS:JSONEncode(data)
+    local success, err = pcall(function() writefile("Mm2_ScriptSetup.json", encode_data, true) end)
+    if not success then
+        warn("Error saving data: " .. err)
+    end
+end
+
+function read_data()
+    local success, data = pcall(readfile, "Mm2_ScriptSetup.json")
+    if success then
+        decode_data = IHS:JSONDecode(data)
+        IsOn = decode_data.IsOn
+        DelayTeleportation = decode_data.DelayTeleportation
+        IsCoinName = decode_data.IsCoinName
+    else
+        default_data()
+    end
+    
+    if IsOn then
+        IB1.Text = _G.SimpleScriptLanG[5] or "Get Coin: ON"
+        IB1.TextColor3 = Color3.new(0, 1, 0)
+    else
+        IB1.Text = _G.SimpleScriptLanG[4] or "Get Coin: OFF"
+        IB1.TextColor3 = Color3.new(1, 1, 1)
+    end
+end
+
+if crlct == "VN" then
+    print("Vietnamese Language Selected!")
+elseif crlct == "US" then
+    print("UnitedState Language Selected!")
+end
+
+IB1.MouseButton1Click:Connect(function()
+    if IsOn then
+        IsOn = false
+        IB1.Text = _G.SimpleScriptLanG[4] or "Get Coin: OFF"
+        IB1.TextColor3 = Color3.new(1, 1, 1)
+    else
+        IsOn = true
+        IB1.Text = _G.SimpleScriptLanG[5] or "Get Coin: ON"
+        IB1.TextColor3 = Color3.new(0, 1, 0)
+    end
+    save_data()
+end)
+
+print(_G.SimpleScriptLanG[8] or "Checking data.")
+task.wait()
+read_data()
+print(_G.SimpleScriptLanG[9] or "Loaded save data.")
+
+local AlrDone = false
+_G.AutoFindCoin = IRS.RenderStepped:Connect(function()
+    if IsOn then
+        if not AlrDone then
+            AlrDone = true
+            toCoin()
+            task.wait(DelayTeleportation)
+            AlrDone = false
+        end
+    end
+end)
